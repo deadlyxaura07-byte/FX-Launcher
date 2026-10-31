@@ -2,7 +2,6 @@ package com.fx.launcher
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.app.WallpaperManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -13,7 +12,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Button
 import android.widget.GridLayout
 import android.widget.LinearLayout
@@ -25,251 +23,86 @@ import java.util.Locale
 
 class MainActivity : Activity() {
     private val bg = Color.rgb(8, 10, 15)
-    private val panel = Color.rgb(19, 22, 31)
+    private val panel = Color.rgb(21, 24, 34)
     private val white = Color.rgb(245, 247, 255)
     private val muted = Color.rgb(151, 160, 180)
-    private val accent = Color.rgb(126, 108, 255)
-    private lateinit var root: LinearLayout
+    private val accent = Color.rgb(132, 111, 255)
     private lateinit var clock: TextView
     private val handler = Handler(Looper.getMainLooper())
-    private val ticker = object : Runnable {
+    private val tick = object : Runnable {
         override fun run() {
-            if (::clock.isInitialized) {
-                clock.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-            }
+            if (::clock.isInitialized) clock.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
             handler.postDelayed(this, 1000)
         }
     }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg
         window.navigationBarColor = bg
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv() or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
         showHome()
-        handler.post(ticker)
+        handler.post(tick)
     }
-
-    override fun onDestroy() {
-        handler.removeCallbacks(ticker)
-        super.onDestroy()
+    override fun onDestroy() { handler.removeCallbacks(tick); super.onDestroy() }
+    private fun rounded(color: Int, radius: Float = 22f) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
+    private fun label(s: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply {
+        text=s; textSize=size; setTextColor(color); if (bold) setTypeface(typeface, Typeface.BOLD); gravity=Gravity.CENTER_VERTICAL
     }
-
-    private fun rounded(color: Int, radius: Float = 24f): GradientDrawable =
-        GradientDrawable().apply { setColor(color); cornerRadius = radius }
-
-    private fun text(value: String, size: Float, color: Int, bold: Boolean = false): TextView =
-        TextView(this).apply {
-            text = value
-            textSize = size
-            setTextColor(color)
-            if (bold) setTypeface(typeface, Typeface.BOLD)
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
     private fun showHome() {
-        root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(22, 24, 22, 18)
-            setBackgroundColor(bg)
-        }
+        val outer = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(22,24,22,16); setBackgroundColor(bg) }
         val scroll = ScrollView(this)
-        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        scroll.addView(content)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-
-        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        top.addView(text("FX", 23f, white, true))
-        top.addView(text("  LAUNCHER", 13f, muted, true))
-        val spacer = View(this)
-        top.addView(spacer, LinearLayout.LayoutParams(0, 1, 1f))
-        val settings = Button(this).apply {
-            text = "⋯"
-            textSize = 20f
-            setTextColor(white)
-            background = rounded(panel, 18f)
-            setOnClickListener { showSettings() }
-        }
-        top.addView(settings, LinearLayout.LayoutParams(54, 48))
-        content.addView(top)
-
-        val hero = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(22, 22, 22, 22)
-            background = rounded(panel, 28f)
-        }
-        val day = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date())
-        hero.addView(text(day.uppercase(Locale.getDefault()), 12f, muted, true))
-        clock = text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()), 58f, white, true)
-        hero.addView(clock)
-        hero.addView(text("YOUR WORLD. YOUR WAY.", 11f, accent, true))
-        val heroParams = LinearLayout.LayoutParams(-1, -2)
-        heroParams.topMargin = 28
-        content.addView(hero, heroParams)
-
-        val quickTitle = text("YOUR FX ECOSYSTEM", 12f, muted, true)
-        val quickParams = LinearLayout.LayoutParams(-1, 46)
-        quickParams.topMargin = 24
-        content.addView(quickTitle, quickParams)
-        val quick = GridLayout(this).apply { columnCount = 3 }
-        listOf(
-            Triple("◷", "FX CLOCK", "FX CLOCK"),
-            Triple("⬡", "SECURITY", "FX SECURITY"),
-            Triple("◎", "FX VERSE", "FX VERSE")
-        ).forEach { item ->
-            val tile = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setPadding(6, 15, 6, 15)
-                background = rounded(panel, 22f)
-                isClickable = true
-                isFocusable = true
-                setOnClickListener { openProduct(item.third) }
-            }
-            tile.addView(text(item.first, 26f, accent, true).apply { gravity = Gravity.CENTER })
-            tile.addView(text(item.second, 10f, white, true).apply { gravity = Gravity.CENTER })
-            val params = GridLayout.LayoutParams().apply {
-                width = 0
-                height = 104
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-                setMargins(4, 4, 4, 4)
-            }
-            quick.addView(tile, params)
-        }
-        content.addView(quick)
-
-        val appsHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        appsHeader.addView(text("APPS", 12f, muted, true))
-        val gap = View(this)
-        appsHeader.addView(gap, LinearLayout.LayoutParams(0, 1, 1f))
-        val allApps = Button(this).apply {
-            text = "View all  →"
-            setTextColor(accent)
-            background = rounded(bg, 10f)
-            setOnClickListener { showAppDrawer() }
-        }
-        appsHeader.addView(allApps)
-        val headerParams = LinearLayout.LayoutParams(-1, 54)
-        headerParams.topMargin = 14
-        content.addView(appsHeader, headerParams)
-
-        val drawerPreview = Button(this).apply {
-            text = "⌕     Search and open apps"
-            textSize = 15f
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(18, 0, 18, 0)
-            setTextColor(muted)
-            background = rounded(panel, 18f)
-            setOnClickListener { showAppDrawer() }
-        }
-        content.addView(drawerPreview, LinearLayout.LayoutParams(-1, 58))
-
-        val footer = text("FX • BUILT FOR YOUR EVERYDAY", 10f, muted, true).apply { gravity = Gravity.CENTER }
-        root.addView(footer, LinearLayout.LayoutParams(-1, 40))
-        setContentView(root)
+        val body = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
+        scroll.addView(body); outer.addView(scroll, LinearLayout.LayoutParams(-1,0,1f))
+        val brand = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL }
+        brand.addView(label("FX",25f,white,true)); brand.addView(label("  LAUNCHER",13f,muted,true))
+        val spacer=View(this); brand.addView(spacer,LinearLayout.LayoutParams(0,1,1f))
+        val menu=Button(this).apply { text="⋯"; textSize=22f; setTextColor(white); background=rounded(panel); setOnClickListener { settings() } }
+        brand.addView(menu,LinearLayout.LayoutParams(54,48)); body.addView(brand)
+        val hero=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(22,22,22,22); background=rounded(panel,28f) }
+        hero.addView(label(SimpleDateFormat("EEEE, d MMMM",Locale.getDefault()).format(Date()).uppercase(),12f,muted,true))
+        clock=label(SimpleDateFormat("HH:mm",Locale.getDefault()).format(Date()),60f,white,true); hero.addView(clock)
+        hero.addView(label("YOUR WORLD. YOUR WAY.",11f,accent,true))
+        val hp=LinearLayout.LayoutParams(-1,-2); hp.topMargin=26; body.addView(hero,hp)
+        val title=label("YOUR FX ECOSYSTEM",12f,muted,true); val tp=LinearLayout.LayoutParams(-1,48); tp.topMargin=18; body.addView(title,tp)
+        val grid=GridLayout(this).apply { columnCount=3 }
+        listOf(Triple("◷","FX CLOCK","clock"),Triple("⬡","FX SECURITY","security"),Triple("◎","FX VERSE","verse")).forEach { item ->
+            val tile=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; setPadding(5,12,5,12); background=rounded(panel); isClickable=true; setOnClickListener { openProduct(item.third) } }
+            tile.addView(label(item.first,27f,accent,true).apply { gravity=Gravity.CENTER })
+            tile.addView(label(item.second,10f,white,true).apply { gravity=Gravity.CENTER })
+            val p=GridLayout.LayoutParams().apply { width=0; height=104; columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f); setMargins(4,4,4,4) }
+            grid.addView(tile,p)
+        }; body.addView(grid)
+        val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL }
+        row.addView(label("APPS",12f,muted,true)); val gap=View(this); row.addView(gap,LinearLayout.LayoutParams(0,1,1f))
+        row.addView(Button(this).apply { text="View all  →"; setTextColor(accent); background=rounded(bg); setOnClickListener { showDrawer() } })
+        val rp=LinearLayout.LayoutParams(-1,52); rp.topMargin=12; body.addView(row,rp)
+        body.addView(Button(this).apply { text="⌕    Search and open apps"; textSize=15f; setTextColor(muted); background=rounded(panel); setOnClickListener { showDrawer() } },LinearLayout.LayoutParams(-1,56))
+        outer.addView(label("FX • BUILT FOR YOUR EVERYDAY",10f,muted,true).apply { gravity=Gravity.CENTER },LinearLayout.LayoutParams(-1,38))
+        setContentView(outer)
     }
-
-    private fun openProduct(label: String) {
-        val query = when (label) {
-            "FX CLOCK" -> listOf("clock")
-            "FX SECURITY" -> listOf("security", "fx")
-            else -> listOf("verse", "fx")
-        }
-        val apps = getLaunchableApps().filter { app -> query.any { app.label.contains(it, true) } }
-        if (apps.isNotEmpty()) {
-            launch(apps.first().packageName)
-        } else {
-            AlertDialog.Builder(this)
-                .setTitle(label)
-                .setMessage("Install $label on this tablet, then it can be opened from here. For now, you can find it in the app drawer if its name differs.")
-                .setPositiveButton("Open app drawer") { _, _ -> showAppDrawer() }
-                .setNegativeButton("OK", null)
-                .show()
-        }
+    private data class AppItem(val name:String,val pkg:String)
+    private fun apps(): List<AppItem> = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),PackageManager.MATCH_ALL)
+        .mapNotNull { val n=it.loadLabel(packageManager)?.toString() ?: return@mapNotNull null; AppItem(n,it.activityInfo.packageName) }
+        .distinctBy { it.pkg }.filter { it.pkg != packageName }.sortedBy { it.name.lowercase(Locale.getDefault()) }
+    private fun launch(pkg:String) { packageManager.getLaunchIntentForPackage(pkg)?.let { try { startActivity(it) } catch (_:Exception) {} } }
+    private fun openProduct(key:String) {
+        val words=when(key) { "clock"->listOf("fx clock","fx-clock"); "security"->listOf("fx security","security"); else->listOf("fx verse","verse") }
+        val found=apps().firstOrNull { a -> words.any { a.name.contains(it,true) } }
+        if(found!=null) launch(found.pkg) else AlertDialog.Builder(this).setTitle("FX product").setMessage("Install the matching FX app first. You can also find it in the app drawer if it has a different name.").setPositiveButton("Open app drawer") { _,_->showDrawer() }.setNegativeButton("OK",null).show()
     }
-
-    private data class LaunchApp(val label: String, val packageName: String, val icon: android.graphics.drawable.Drawable)
-
-    private fun getLaunchableApps(): List<LaunchApp> {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        return packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL)
-            .mapNotNull { info ->
-                val label = info.loadLabel(packageManager)?.toString() ?: return@mapNotNull null
-                LaunchApp(label, info.activityInfo.packageName, info.loadIcon(packageManager))
-            }
-            .distinctBy { it.packageName }
-            .filter { it.packageName != packageName }
-            .sortedBy { it.label.lowercase(Locale.getDefault()) }
+    private fun showDrawer() {
+        val sc=ScrollView(this); val list=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(22,22,22,22); setBackgroundColor(bg) }
+        list.addView(label("ALL APPS",22f,white,true)); list.addView(label("${apps().size} installed apps",12f,muted))
+        apps().forEach { a ->
+            val b=Button(this).apply { text="▣     ${a.name}"; gravity=Gravity.CENTER_VERTICAL; setTextColor(white); background=rounded(panel); setOnClickListener { launch(a.pkg) } }
+            val p=LinearLayout.LayoutParams(-1,54); p.setMargins(0,4,0,4); list.addView(b,p)
+        }
+        list.addView(Button(this).apply { text="← Back to FX home"; setTextColor(white); background=rounded(accent); setOnClickListener { showHome() } },LinearLayout.LayoutParams(-1,52))
+        sc.addView(list); setContentView(sc)
     }
-
-    private fun showAppDrawer() {
-        val apps = getLaunchableApps()
-        val body = ScrollView(this)
-        val list = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(24, 18, 24, 18)
-            setBackgroundColor(bg)
-        }
-        list.addView(text("ALL APPS", 20f, white, true))
-        list.addView(text("${apps.size} apps installed", 12f, muted).apply {
-            val p = LinearLayout.LayoutParams(-1, 36)
-            addView(this, p)
-        })
-        apps.forEach { app ->
-            val row = TextView(this).apply {
-                text = "▣     ${app.label}"
-                textSize = 16f
-                setTextColor(white)
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(14, 0, 14, 0)
-                background = rounded(panel, 16f)
-                isClickable = true
-                isFocusable = true
-                setOnClickListener { launch(app.packageName) }
-            }
-            val p = LinearLayout.LayoutParams(-1, 54)
-            p.setMargins(0, 4, 0, 4)
-            list.addView(row, p)
-        }
-        val back = Button(this).apply {
-            text = "← Back to FX home"
-            setTextColor(white)
-            background = rounded(accent, 18f)
-            setOnClickListener { showHome() }
-        }
-        list.addView(back, LinearLayout.LayoutParams(-1, 52))
-        body.addView(list)
-        setContentView(body)
-    }
-
-    private fun launch(packageName: String) {
-        val intent = packageManager.getLaunchIntentForPackage(packageName)
-        if (intent != null) {
-            try { startActivity(intent) } catch (_: Exception) {
-                AlertDialog.Builder(this).setMessage("Couldn't open this app.").setPositiveButton("OK", null).show()
-            }
-        }
-    }
-
-    private fun showSettings() {
-        val options = arrayOf("Choose wallpaper", "Android home settings", "About FX Launcher")
-        AlertDialog.Builder(this)
-            .setTitle("FX Launcher settings")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> {
-                        try { startActivity(Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER)) }
-                        catch (_: Exception) {
-                            try { startActivity(Intent(Intent.ACTION_SET_WALLPAPER)) } catch (_: Exception) {}
-                        }
-                    }
-                    1 -> {
-                        try { startActivity(Intent(android.provider.Settings.ACTION_HOME_SETTINGS)) }
-                        catch (_: Exception) { startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) }
-                    }
-                    2 -> AlertDialog.Builder(this).setTitle("FX Launcher").setMessage("Version 1.0\nA first step toward FX Phone.").setPositiveButton("Nice", null).show()
-                }
-            }
-            .show()
+    private fun settings() {
+        AlertDialog.Builder(this).setTitle("FX Launcher").setItems(arrayOf("Android home settings","About FX Launcher")) { _,which ->
+            if(which==0) try { startActivity(Intent(android.provider.Settings.ACTION_HOME_SETTINGS)) } catch (_:Exception) { startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) }
+            else AlertDialog.Builder(this).setTitle("FX Launcher v1.0").setMessage("A first step toward FX Phone.").setPositiveButton("OK",null).show()
+        }.show()
     }
 }
